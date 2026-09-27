@@ -1,6 +1,5 @@
 package com.fc.v2.service.impl;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -15,6 +14,7 @@ import com.fc.v2.mapper.auto.TMetpStnDocMapper;
 import com.fc.v2.model.auto.TMetpElemCard;
 import com.fc.v2.model.auto.TMetpStnDoc;
 import com.fc.v2.service.ITMetpElemCardService;
+import com.fc.v2.util.MetpGradeUtil;
 import com.fc.v2.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -40,10 +40,8 @@ public class TMetpElemCardServiceImpl extends ServiceImpl<TMetpElemCardMapper, T
 
     @Override
     public List<TMetpElemCard> selectTMetpElemCardList(Wrapper<TMetpElemCard> queryWrapper) {
-        QueryWrapper<TMetpElemCard> wrapper = new QueryWrapper<TMetpElemCard>();
-        com.github.pagehelper.PageHelper.startPage(1, 10);
-        wrapper.eq("status", 0);
-        return this.baseMapper.selectList(wrapper);
+        // 尊重调用方传入的查询条件，分页由 Controller 的 startPage() 统一定，不许在此另起小灶
+        return this.baseMapper.selectList(queryWrapper);
     }
 
     @Override
@@ -52,7 +50,6 @@ public class TMetpElemCardServiceImpl extends ServiceImpl<TMetpElemCardMapper, T
             return 0;
         }
 
-        record.setCreateBy(record.getBillNo());
         TMetpStnDoc refArch = metpStnDocMapper.selectOne(new QueryWrapper<TMetpStnDoc>()
                 .eq("id", record.getSiteId()).eq("del_flag", 0));
         if (refArch == null) {
@@ -69,21 +66,9 @@ public class TMetpElemCardServiceImpl extends ServiceImpl<TMetpElemCardMapper, T
                 return 0;
             }
         }
-        TMetpStnDoc bandArch = metpStnDocMapper.selectById(record.getSiteId());
-        BigDecimal bandVal = record.getQty();
-        int bandLevel = 0;
-        if (bandVal != null && bandArch != null) {
-            if (bandVal.compareTo(bandArch.getTh1Max()) <= 0) {
-                bandLevel = 1;
-            } else if (bandVal.compareTo(bandArch.getTh2Max()) <= 0) {
-                bandLevel = 2;
-            } else if (bandVal.compareTo(bandArch.getTh3Max()) <= 0) {
-                bandLevel = 3;
-            } else {
-                bandLevel = 4;
-            }
-        }
-        record.setGradeLevel(bandLevel);
+        // 分档只认基础档案这一个源头，口径（等于上限取高一档）走公共尺
+        record.setGradeLevel(MetpGradeUtil.levelOf(
+                refArch.getTh1Max(), refArch.getTh2Max(), refArch.getTh3Max(), record.getQty()));
 
         record.setDelFlag(0);
         return this.baseMapper.insert(record);

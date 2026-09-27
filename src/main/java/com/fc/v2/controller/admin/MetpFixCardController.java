@@ -45,6 +45,10 @@ public class MetpFixCardController extends BaseController {
     @ResponseBody
     public ResultTable list(TMetpFixCard record) {
         QueryWrapper<TMetpFixCard> queryWrapper = new QueryWrapper<TMetpFixCard>();
+        queryWrapper.eq("del_flag", 0);
+        queryWrapper.eq(com.fc.v2.util.StringUtils.isNotEmpty(record.getBizNo()), "biz_no", record.getBizNo());
+        queryWrapper.eq(record.getStage() != null, "stage", record.getStage());
+        queryWrapper.eq(record.getStatus() != null, "status", record.getStatus());
         startPage();
         com.github.pagehelper.PageInfo<TMetpFixCard> page =
                 new com.github.pagehelper.PageInfo<TMetpFixCard>(metpFixCardService.selectTMetpFixCardList(queryWrapper));
